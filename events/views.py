@@ -2,10 +2,12 @@ from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 
 from rest_framework import viewsets,filters
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly,AllowAny
 from .models import Event,Attendee
 from .serializers import EventSerializer,AttendeeSerializer,UserSerializer
 from django.contrib.auth.models import User
+from rest_framework import status
+from rest_framework.response import Response
 
 
 def home(request):
@@ -31,11 +33,23 @@ class EventViewSet(viewsets.ModelViewSet):
         if event_date:
             queryset = queryset.filter(event_date=event_date)
         return queryset
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Ensure event details include the list of attendees."""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+        
+        # Include attendees in response
+        attendees = Attendee.objects.filter(event=instance)
+        data["attendees"] = AttendeeSerializer(attendees, many=True).data
+
+        return Response(data)
 
 class AtttendeeViewSet(viewsets.ModelViewSet):
     queryset = Attendee.objects.all()
     serializer_class =AttendeeSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         queryset = Attendee.objects.all()
@@ -43,6 +57,19 @@ class AtttendeeViewSet(viewsets.ModelViewSet):
         if event_id:
             queryset = queryset.filter(event_id=event_id)
         return queryset
+    def create(self, request, *args, **kwargs):
+        # ✅ Ensure event_id is provided
+        event_id = request.data.get("event")
+        if not event_id:
+            return Response({"error": "Event ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Validate and Save
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()  # ✅ Save attendee
+            return Response(serializer.data, status=status.HTTP_201_CREATED)  # ✅ Return success response
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  # ✅ Return validation errors status=status.HTTP_400_BAD_REQUEST)
     
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()

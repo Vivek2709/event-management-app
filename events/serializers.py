@@ -3,7 +3,7 @@ from .models import Event,Attendee
 from django.utils.timezone import now
 from django.contrib.auth.models import User
 import re
-
+import datetime
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
@@ -11,11 +11,13 @@ class EventSerializer(serializers.ModelSerializer):
     
     #custom validations
     def validate_event_date(self,value):
-        if value < now():
+        if isinstance(value, datetime.datetime):
+            value = value.date()
+        if value < now().date():
             raise serializers.ValidationError("Event Date can not be in the past.")
         return value
     
-    def validate_title(slef,value):
+    def validate_title(self,value):
         if len(value) < 5 or len(value) > 100:
             raise serializers.ValidationError("Title must be between 5 aqnd 100 characters")
         return value
