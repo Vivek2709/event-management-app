@@ -58,15 +58,13 @@ class AtttendeeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(event_id=event_id)
         return queryset
     def create(self, request, *args, **kwargs):
-        # ✅ Ensure event_id is provided
         event_id = request.data.get("event")
         if not event_id:
             return Response({"error": "Event ID is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ Validate and Save
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()  # ✅ Save attendee
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)  # ✅ Return success response
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  # ✅ Return validation errors status=status.HTTP_400_BAD_REQUEST)
